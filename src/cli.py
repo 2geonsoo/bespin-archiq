@@ -13,6 +13,7 @@ class ArchiQCLI:
         self.q_hook = AmazonQDeveloperHook()
         self.default_region = 'ap-northeast-2'  # Seoul region as default
         self.language = 'ko'  # Default language
+        self.aws_profile = 'default'
         
         # Get terminal size for better formatting
         self.terminal_width = shutil.get_terminal_size().columns
@@ -33,6 +34,8 @@ class ArchiQCLI:
                     ('5. Service Screener 결과 기반 Well-Architected Review', 'service_screener'),
                     ('6. 종료', 'exit')
                 ],
+                'profile_select': 'AWS 프로파일을 선택하세요:',
+                'profile_display': '현재 AWS 프로파일: {}',
                 'region_input': 'AWS 리전을 입력하세요 (기본값: {}):',
                 'directory_input': 'Service Screener 결과가 있는 디렉토리 경로를 입력하세요:',
                 'processing': '{} 리전의 AWS 리소스를 기반으로 {}을(를) 수행합니다...',
@@ -60,6 +63,8 @@ class ArchiQCLI:
                     ('5. Service Screener Results-based Well-Architected Review', 'service_screener'),
                     ('6. Exit', 'exit')
                 ],
+                'profile_select': 'Select AWS profile:',
+                'profile_display': 'Current AWS profile: {}',
                 'region_input': 'Enter AWS region (default: {}):',
                 'directory_input': 'Enter the directory path containing Service Screener results:',
                 'processing': 'Performing {} based on AWS resources in {} region...',
@@ -150,6 +155,46 @@ class ArchiQCLI:
             self.language = answers['language']
             # Reload prompts with new language
             self.prompts = self._load_prompts()
+
+    def _get_aws_profiles(self):
+        """~/.aws/credentials 및 ~/.aws/config에서 프로파일 목록을 읽어 반환"""
+        import configparser
+        profiles = set()
+
+        for path in [
+            os.path.expanduser('~/.aws/credentials'),
+            os.path.expanduser('~/.aws/config'),
+        ]:
+            if os.path.exists(path):
+                config = configparser.ConfigParser()
+                config.read(path, encoding='utf-8')
+                for section in config.sections():
+                    # config 파일은 'profile <name>' 형식
+                    name = section.removeprefix('profile ').strip()
+                    profiles.add(name)
+
+        if not profiles:
+            profiles.add('default')
+
+        ordered = sorted(profiles - {'default'})
+        return ['default'] + ordered
+
+    def _select_profile(self):
+        """AWS 프로파일 선택 메뉴"""
+        profiles = self._get_aws_profiles()
+        choices = [(p, p) for p in profiles]
+
+        questions = [
+            inquirer.List('profile',
+                          message=self._get_text('profile_select'),
+                          choices=choices,
+                          default=self.aws_profile)
+        ]
+
+        answers = inquirer.prompt(questions)
+        if answers:
+            self.aws_profile = answers['profile']
+            self.q_hook.aws_profile = self.aws_profile
 
     def modernization_path_review(self):
         """Perform modernization path analysis based on AWS resources"""
@@ -325,9 +370,11 @@ class ArchiQCLI:
 
     def main_menu(self):
         """Display the main menu and handle user input"""
-        # First, select language
+        # First, select language then profile
         self._clear_screen()
         self._select_language()
+        self._clear_screen()
+        self._select_profile()
         
         while True:
             self._clear_screen()
@@ -338,15 +385,16 @@ class ArchiQCLI:
             print(f"{self._get_text('subtitle')}".center(self.max_width))
             print("=" * self.max_width)
             
-            # Show current language in menu
+            # Show current language and profile in menu
             lang_display = "한국어" if self.language == 'ko' else "English"
-            print(f"Language: {lang_display}".center(self.max_width))
+            print(f"Language: {lang_display}  |  AWS Profile: {self.aws_profile}".center(self.max_width))
             print("-" * self.max_width)
-            
+
             menu_options = self._get_text('menu_options').copy()
-            # Add language change option
             lang_change_text = "언어 변경 (Change Language)" if self.language == 'ko' else "언어 변경 (Change Language)"
+            profile_change_text = "AWS 프로파일 변경" if self.language == 'ko' else "Change AWS Profile"
             menu_options.insert(-1, (f"7. {lang_change_text}", 'change_language'))
+            menu_options.insert(-1, (f"8. {profile_change_text}", 'change_profile'))
             
             questions = [
                 inquirer.List('action',
@@ -372,6 +420,8 @@ class ArchiQCLI:
                     self.service_screener_review()
                 elif answers['action'] == 'change_language':
                     self._select_language()
+                elif answers['action'] == 'change_profile':
+                    self._select_profile()
                 elif answers['action'] == 'exit':
                     self._clear_screen()
                     print(f"\n{self._get_text('goodbye')}".center(self.max_width))

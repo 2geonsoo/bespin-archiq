@@ -63,14 +63,21 @@ class QChatInteractiveSession:
     """
     Interactive qchat session handler with real-time output and spinner
     """
-    
-    def __init__(self):
+
+    def __init__(self, aws_profile: str = 'default'):
         self.process = None
         self.is_active = False
         self.output_queue = queue.Queue()
         self.reader_thread = None
         self.spinner = SpinnerManager()
-        
+        self.aws_profile = aws_profile
+
+    def _build_env(self):
+        """Build subprocess environment with AWS_PROFILE set"""
+        env = os.environ.copy()
+        env['AWS_PROFILE'] = self.aws_profile
+        return env
+
     def start_session(self):
         """Start the interactive qchat session"""
         try:
@@ -81,7 +88,8 @@ class QChatInteractiveSession:
                 stderr=subprocess.STDOUT,  # Merge stderr to stdout
                 text=True,
                 universal_newlines=True,
-                bufsize=0  # Unbuffered
+                bufsize=0,  # Unbuffered
+                env=self._build_env()
             )
             self.is_active = True
             print("[INFO] 🚀 Interactive qchat session started")
@@ -175,13 +183,6 @@ class QChatInteractiveSession:
             self.process.stdin.write(question + '\n')
             self.process.stdin.flush()
             
-            # Auto-respond to prompts
-            auto_response_thread = threading.Thread(
-                target=self._auto_respond_to_prompts, 
-                daemon=True
-            )
-            auto_response_thread.start()
-            
             # Read responses with improved handling
             response_started = False
             no_output_count = 0
@@ -244,29 +245,6 @@ class QChatInteractiveSession:
             print(f"[ERROR] ❌ Interactive question failed: {e}")
             raise e
     
-    def _auto_respond_to_prompts(self):
-        """Auto-respond to y/n/t prompts in separate thread"""
-        try:
-            while self.is_active and self.process and self.process.poll() is None:
-                try:
-                    line = self.output_queue.get(timeout=1.0)
-                    
-                    # Check for prompts that need auto-response
-                    if any(prompt in line.lower() for prompt in ['(y/n)', '(y/n/t)', 'continue?', 'proceed?']):
-                        print(f"[AUTO-RESPONSE] 🤖 Detected prompt: {line}")
-                        print("[AUTO-RESPONSE] 🤖 Sending 'y' response...")
-                        self.process.stdin.write('y\n')
-                        self.process.stdin.flush()
-                        
-                except queue.Empty:
-                    continue
-                except Exception as e:
-                    print(f"[WARNING] Auto-response error: {e}")
-                    break
-                    
-        except Exception as e:
-            print(f"[WARNING] Auto-response thread error: {e}")
-    
     def ask_question_with_file(self, question: str):
         """
         Use temporary file approach - more reliable than stdin
@@ -289,6 +267,7 @@ class QChatInteractiveSession:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
+                    env=self._build_env()
                 )
             
             if result.stderr:
@@ -335,6 +314,7 @@ class QChatInteractiveSession:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                env=self._build_env()
             )
             
             if result.stderr:
@@ -415,13 +395,14 @@ class AmazonQDeveloperHook:
     Enhanced Amazon Q Developer Hook with real-time interaction
     """
 
-    def __init__(self, ide_extension: bool = False):
+    def __init__(self, ide_extension: bool = False, aws_profile: str = 'default'):
         self.ide_extension = ide_extension
+        self.aws_profile = aws_profile
         self.interactive_session = None
 
     def start_interactive_session_with_tools(self):
         """Start an interactive session with --trust-all-tools"""
-        self.interactive_session = QChatInteractiveSession()
+        self.interactive_session = QChatInteractiveSession(aws_profile=self.aws_profile)
         return self.interactive_session.start_session()
     
     def ask_question_with_auto_responses(self, question: str):
