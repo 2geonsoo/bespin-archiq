@@ -180,21 +180,43 @@ class ArchiQCLI:
         return ['default'] + ordered
 
     def _select_profile(self):
-        """AWS 프로파일 선택 메뉴"""
+        """AWS 프로파일 선택 메뉴 — 번호 선택 또는 직접 이름 입력"""
         profiles = self._get_aws_profiles()
-        choices = [(p, p) for p in profiles]
 
+        print(f"\n{self._get_text('profile_select')}")
+        for i, p in enumerate(profiles, 1):
+            marker = " *" if p == self.aws_profile else ""
+            print(f"  {i}. {p}{marker}")
+        print()
+
+        hint = "번호 또는 프로파일 이름 입력" if self.language == 'ko' else "Enter number or profile name"
         questions = [
-            inquirer.List('profile',
-                          message=self._get_text('profile_select'),
-                          choices=choices,
-                          default=self.aws_profile)
+            inquirer.Text('profile',
+                          message=f"{hint} (기본값: {self.aws_profile})" if self.language == 'ko'
+                                  else f"{hint} (default: {self.aws_profile})",
+                          default='')
         ]
 
         answers = inquirer.prompt(questions)
-        if answers:
-            self.aws_profile = answers['profile']
-            self.q_hook.aws_profile = self.aws_profile
+        if not answers:
+            return
+
+        raw = answers['profile'].strip()
+
+        if not raw:
+            # 그대로 유지
+            pass
+        elif raw.isdigit():
+            idx = int(raw) - 1
+            if 0 <= idx < len(profiles):
+                self.aws_profile = profiles[idx]
+            else:
+                print(f"  ⚠ 범위를 벗어난 번호입니다. 기존 프로파일({self.aws_profile})을 유지합니다.")
+        else:
+            # 이름 직접 입력
+            self.aws_profile = raw
+
+        self.q_hook.aws_profile = self.aws_profile
 
     def modernization_path_review(self):
         """Perform modernization path analysis based on AWS resources"""

@@ -87,7 +87,7 @@ select_aws_profile() {
     echo -e "${BLUE}사용 가능한 AWS 프로파일:${NC}"
     for i in "${!profiles[@]}"; do
         if [ "${profiles[$i]}" = "$current_profile" ]; then
-            echo -e "  $((i+1)). ${GREEN}${profiles[$i]} (현재)${NC}"
+            echo -e "  $((i+1)). ${GREEN}${profiles[$i]} *${NC}"
         else
             echo "  $((i+1)). ${profiles[$i]}"
         fi
@@ -95,16 +95,28 @@ select_aws_profile() {
     echo ""
 
     while true; do
-        read -p "프로파일 번호를 선택하세요 (기본값: $current_profile): " choice
+        read -p "번호 또는 프로파일 이름을 입력하세요 (기본값: $current_profile): " choice
+
+        # 엔터 — 기본값 유지
         if [ -z "$choice" ]; then
             echo "$current_profile"
             return
         fi
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#profiles[@]}" ]; then
-            echo "${profiles[$((choice-1))]}"
-            return
+
+        # 숫자 입력 — 목록에서 선택
+        if [[ "$choice" =~ ^[0-9]+$ ]]; then
+            if [ "$choice" -ge 1 ] && [ "$choice" -le "${#profiles[@]}" ]; then
+                echo "${profiles[$((choice-1))]}"
+                return
+            else
+                echo -e "${RED}범위를 벗어난 번호입니다. 1-${#profiles[@]} 사이로 입력하세요.${NC}"
+                continue
+            fi
         fi
-        echo -e "${RED}잘못된 선택입니다. 1-${#profiles[@]} 사이의 숫자를 입력하세요.${NC}"
+
+        # 문자열 입력 — 이름 직접 사용
+        echo "$choice"
+        return
     done
 }
 
@@ -118,7 +130,7 @@ execute_prompt() {
     echo ""
 
     # Amazon Kiro CLI에 프롬프트 전달 (AWS_PROFILE 환경변수 적용)
-    echo "$prompt_content" | AWS_PROFILE="$profile" kiro-cli --no-interactive --trust-all-tools
+    echo "$prompt_content" | AWS_PROFILE="$profile" kiro-cli chat --no-interactive --trust-all-tools
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ ${feature_name} 완료!${NC}"
