@@ -211,28 +211,29 @@ class ArchiQCLI:
         print()
 
         hint = "번호 또는 프로파일 이름 입력" if self.language == 'ko' else "Enter number or profile name"
-        prompt_msg = (f"{hint} (기본값: {self.aws_profile})" if self.language == 'ko'
-                      else f"{hint} (default: {self.aws_profile})")
-        questions = [
-            inquirer.Text('profile', message=prompt_msg, default='')
-        ]
+        default_hint = f"기본값: {self.aws_profile}" if self.language == 'ko' else f"default: {self.aws_profile}"
 
-        answers = inquirer.prompt(questions)
-        if not answers:
-            return
+        while True:
+            try:
+                raw = input(f"  >> {hint} ({default_hint}): ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return
 
-        raw = answers['profile'].strip()
-
-        if not raw:
-            pass  # 그대로 유지
-        elif raw.isdigit():
-            idx = int(raw) - 1
-            if 0 <= idx < len(profiles):
-                self.aws_profile = profiles[idx]['name']
+            if not raw:
+                break  # 기존 유지
+            elif raw.isdigit():
+                idx = int(raw) - 1
+                if 0 <= idx < len(profiles):
+                    self.aws_profile = profiles[idx]['name']
+                    break
+                else:
+                    max_n = len(profiles)
+                    err = f"  ⚠ 1~{max_n} 사이의 번호를 입력하세요." if self.language == 'ko' else f"  ⚠ Enter a number between 1 and {max_n}."
+                    print(err)
             else:
-                print(f"  ⚠ 범위를 벗어난 번호입니다. 기존 프로파일({self.aws_profile})을 유지합니다.")
-        else:
-            self.aws_profile = raw
+                self.aws_profile = raw
+                break
 
         self.q_hook.aws_profile = self.aws_profile
 

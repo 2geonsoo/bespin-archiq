@@ -161,46 +161,51 @@ _profile_region() {
     echo "${region:--}"
 }
 
-# 대화형 프로파일 선택 함수
+# 대화형 프로파일 선택 함수 — 결과를 전역변수 SELECTED_PROFILE에 저장
+# ($() 서브셸로 호출하면 echo 출력이 모두 캡처되므로 전역변수를 사용)
 select_aws_profile() {
     local current_profile="$1"
     mapfile -t profiles < <(list_aws_profiles)
 
-    echo -e "${BLUE}사용 가능한 AWS 프로파일:${NC}"
-    printf "  %-5s %-20s %-20s %s\n" "No." "Profile" "Region" "Access Key"
-    printf "  %-5s %-20s %-20s %s\n" "----" "-------------------" "-------------------" "----------------"
+    echo -e "${BLUE}사용 가능한 AWS 프로파일:${NC}" >&2
+    printf "  %-5s %-20s %-20s %s\n" "No." "Profile" "Region" "Access Key" >&2
+    printf "  %-5s %-20s %-20s %s\n" "----" "-------------------" "-------------------" "----------------" >&2
     for i in "${!profiles[@]}"; do
         local name="${profiles[$i]}"
         local region; region=$(_profile_region "$name")
         local key; key=$(_profile_masked_key "$name")
         local marker=""
         [ "$name" = "$current_profile" ] && marker=" *"
-        printf "  %-5s %-20s %-20s %s\n" "$((i+1))." "${name}${marker}" "$region" "$key"
+        if [ "$name" = "$current_profile" ]; then
+            printf "  ${GREEN}%-5s %-20s %-20s %s${NC}\n" "$((i+1))." "${name}${marker}" "$region" "$key" >&2
+        else
+            printf "  %-5s %-20s %-20s %s\n" "$((i+1))." "${name}${marker}" "$region" "$key" >&2
+        fi
     done
-    echo ""
+    echo "" >&2
 
     while true; do
         read -p "번호 또는 프로파일 이름을 입력하세요 (기본값: $current_profile): " choice
 
         # 엔터 — 기본값 유지
         if [ -z "$choice" ]; then
-            echo "$current_profile"
+            SELECTED_PROFILE="$current_profile"
             return
         fi
 
         # 숫자 입력 — 목록에서 선택
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
             if [ "$choice" -ge 1 ] && [ "$choice" -le "${#profiles[@]}" ]; then
-                echo "${profiles[$((choice-1))]}"
+                SELECTED_PROFILE="${profiles[$((choice-1))]}"
                 return
             else
-                echo -e "${RED}범위를 벗어난 번호입니다. 1-${#profiles[@]} 사이로 입력하세요.${NC}"
+                echo -e "${RED}범위를 벗어난 번호입니다. 1-${#profiles[@]} 사이로 입력하세요.${NC}" >&2
                 continue
             fi
         fi
 
         # 문자열 입력 — 이름 직접 사용
-        echo "$choice"
+        SELECTED_PROFILE="$choice"
         return
     done
 }
@@ -351,7 +356,9 @@ main() {
     
     # 프로파일이 옵션으로 지정되지 않은 경우 대화형 선택
     if [ "$profile_specified" = false ]; then
-        profile=$(select_aws_profile "$profile")
+        SELECTED_PROFILE=""
+        select_aws_profile "$profile"
+        profile="$SELECTED_PROFILE"
     fi
 
     echo -e "${GREEN}🔑 사용할 AWS 프로파일: $profile${NC}"
