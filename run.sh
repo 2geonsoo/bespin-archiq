@@ -47,32 +47,118 @@ show_help() {
     echo "  $0 4 -r eu-west-1"
 }
 
-# AWS 프로파일 목록 조회 함수
+# ~/.aws/credentials에서 프로파일 이름 목록 반환
 list_aws_profiles() {
-    local profiles=()
     local creds_file="$HOME/.aws/credentials"
     local config_file="$HOME/.aws/config"
+    local -A seen=()
+    local profiles=()
 
+    # credentials 파일 우선
     if [ -f "$creds_file" ]; then
         while IFS= read -r line; do
             if [[ "$line" =~ ^\[(.+)\]$ ]]; then
-                profiles+=("${BASH_REMATCH[1]}")
+                local name="${BASH_REMATCH[1]}"
+                if [ -z "${seen[$name]+_}" ]; then
+                    seen[$name]=1
+                    profiles+=("$name")
+                fi
             fi
         done < "$creds_file"
     fi
 
+    # config 파일에만 있는 프로파일 추가
     if [ -f "$config_file" ]; then
         while IFS= read -r line; do
             if [[ "$line" =~ ^\[profile[[:space:]](.+)\]$ ]]; then
-                profiles+=("${BASH_REMATCH[1]}")
-            elif [[ "$line" =~ ^\[default\]$ ]]; then
-                : # credentials에서 이미 추가될 수 있으므로 무시
+                local name="${BASH_REMATCH[1]}"
+                if [ -z "${seen[$name]+_}" ]; then
+                    seen[$name]=1
+                    profiles+=("$name")
+                fi
             fi
         done < "$config_file"
     fi
 
-    # 중복 제거 후 출력
-    printf '%s\n' "${profiles[@]}" | sort -u
+    [ ${#profiles[@]} -eq 0 ] && profiles=("default")
+
+    # default를 맨 앞으로
+    local reordered=()
+    for p in "${profiles[@]}"; do [ "$p" = "default" ] && reordered+=("$p"); done
+    for p in "${profiles[@]}"; do [ "$p" != "default" ] && reordered+=("$p"); done
+    printf '%s\n' "${reordered[@]}"
+}
+
+# 프로파일의 access_key_id 앞4+뒤4 마스킹 반환
+_profile_masked_key() {
+    local profile="$1"
+    local creds_file="$HOME/.aws/credentials"
+    [ ! -f "$creds_file" ] && echo "-" && return
+
+    local in_section=false key=""
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^\[$profile\]$ ]]; then
+            in_section=true
+            continue
+        fi
+        if $in_section; then
+            [[ "$line" =~ ^\[ ]] && break
+            if [[ "$line" =~ ^aws_access_key_id[[:space:]]*=[[:space:]]*(.+)$ ]]; then
+                key="${BASH_REMATCH[1]}"
+                break
+            fi
+        fi
+    done < "$creds_file"
+
+    if [ -n "$key" ] && [ ${#key} -ge 8 ]; then
+        echo "${key:0:4}...${key: -4}"
+    else
+        echo "-"
+    fi
+}
+
+# 프로파일의 region 반환 (config → credentials 순)
+_profile_region() {
+    local profile="$1"
+    local config_file="$HOME/.aws/config"
+    local creds_file="$HOME/.aws/credentials"
+    local region=""
+
+    # config 파일에서 조회
+    if [ -f "$config_file" ]; then
+        local section="profile $profile"
+        [ "$profile" = "default" ] && section="default"
+        local in_section=false
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^\[$section\]$ ]]; then
+                in_section=true; continue
+            fi
+            if $in_section; then
+                [[ "$line" =~ ^\[ ]] && break
+                if [[ "$line" =~ ^region[[:space:]]*=[[:space:]]*(.+)$ ]]; then
+                    region="${BASH_REMATCH[1]}"; break
+                fi
+            fi
+        done < "$config_file"
+    fi
+
+    # credentials 파일에서도 확인
+    if [ -z "$region" ] && [ -f "$creds_file" ]; then
+        local in_section=false
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^\[$profile\]$ ]]; then
+                in_section=true; continue
+            fi
+            if $in_section; then
+                [[ "$line" =~ ^\[ ]] && break
+                if [[ "$line" =~ ^region[[:space:]]*=[[:space:]]*(.+)$ ]]; then
+                    region="${BASH_REMATCH[1]}"; break
+                fi
+            fi
+        done < "$creds_file"
+    fi
+
+    echo "${region:--}"
 }
 
 # 대화형 프로파일 선택 함수
@@ -80,17 +166,16 @@ select_aws_profile() {
     local current_profile="$1"
     mapfile -t profiles < <(list_aws_profiles)
 
-    if [ ${#profiles[@]} -eq 0 ]; then
-        profiles=("default")
-    fi
-
     echo -e "${BLUE}사용 가능한 AWS 프로파일:${NC}"
+    printf "  %-5s %-20s %-20s %s\n" "No." "Profile" "Region" "Access Key"
+    printf "  %-5s %-20s %-20s %s\n" "----" "-------------------" "-------------------" "----------------"
     for i in "${!profiles[@]}"; do
-        if [ "${profiles[$i]}" = "$current_profile" ]; then
-            echo -e "  $((i+1)). ${GREEN}${profiles[$i]} *${NC}"
-        else
-            echo "  $((i+1)). ${profiles[$i]}"
-        fi
+        local name="${profiles[$i]}"
+        local region; region=$(_profile_region "$name")
+        local key; key=$(_profile_masked_key "$name")
+        local marker=""
+        [ "$name" = "$current_profile" ] && marker=" *"
+        printf "  %-5s %-20s %-20s %s\n" "$((i+1))." "${name}${marker}" "$region" "$key"
     done
     echo ""
 

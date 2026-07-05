@@ -157,44 +157,64 @@ class ArchiQCLI:
             self.prompts = self._load_prompts()
 
     def _get_aws_profiles(self):
-        """~/.aws/credentials 및 ~/.aws/config에서 프로파일 목록을 읽어 반환"""
+        """~/.aws/credentials에서 프로파일 목록과 상세 정보를 읽어 반환"""
         import configparser
-        profiles = set()
 
-        for path in [
-            os.path.expanduser('~/.aws/credentials'),
-            os.path.expanduser('~/.aws/config'),
-        ]:
-            if os.path.exists(path):
-                config = configparser.ConfigParser()
-                config.read(path, encoding='utf-8')
-                for section in config.sections():
-                    # config 파일은 'profile <name>' 형식
-                    name = section.removeprefix('profile ').strip()
-                    profiles.add(name)
+        creds = configparser.ConfigParser()
+        creds_path = os.path.expanduser('~/.aws/credentials')
+        if os.path.exists(creds_path):
+            creds.read(creds_path, encoding='utf-8')
 
-        if not profiles:
-            profiles.add('default')
+        cfg = configparser.ConfigParser()
+        cfg_path = os.path.expanduser('~/.aws/config')
+        if os.path.exists(cfg_path):
+            cfg.read(cfg_path, encoding='utf-8')
 
-        ordered = sorted(profiles - {'default'})
-        return ['default'] + ordered
+        # credentials 섹션 기준으로 프로파일 수집
+        profile_names = list(creds.sections()) if creds.sections() else ['default']
+        # config에만 있는 프로파일도 추가
+        for section in cfg.sections():
+            name = section.removeprefix('profile ').strip()
+            if name not in profile_names:
+                profile_names.append(name)
+
+        # default를 맨 앞으로
+        if 'default' in profile_names:
+            profile_names.remove('default')
+        profile_names = ['default'] + sorted(profile_names)
+
+        profiles = []
+        for name in profile_names:
+            # credentials에서 access key 앞 4자리 + 마스킹
+            key_id = creds.get(name, 'aws_access_key_id', fallback=None)
+            masked_key = f"{key_id[:4]}...{key_id[-4:]}" if key_id and len(key_id) >= 8 else '-'
+
+            # config에서 region 조회 (default는 [default], 나머지는 [profile name])
+            cfg_section = name if name == 'default' else f'profile {name}'
+            region = cfg.get(cfg_section, 'region', fallback=
+                             creds.get(name, 'region', fallback='-'))
+
+            profiles.append({'name': name, 'key': masked_key, 'region': region})
+
+        return profiles
 
     def _select_profile(self):
         """AWS 프로파일 선택 메뉴 — 번호 선택 또는 직접 이름 입력"""
         profiles = self._get_aws_profiles()
 
         print(f"\n{self._get_text('profile_select')}")
+        print(f"  {'No.':<5} {'Profile':<20} {'Region':<20} {'Access Key'}")
+        print(f"  {'-'*4} {'-'*19} {'-'*19} {'-'*16}")
         for i, p in enumerate(profiles, 1):
-            marker = " *" if p == self.aws_profile else ""
-            print(f"  {i}. {p}{marker}")
+            marker = " *" if p['name'] == self.aws_profile else ""
+            print(f"  {i:<5} {p['name'] + marker:<20} {p['region']:<20} {p['key']}")
         print()
 
         hint = "번호 또는 프로파일 이름 입력" if self.language == 'ko' else "Enter number or profile name"
+        prompt_msg = (f"{hint} (기본값: {self.aws_profile})" if self.language == 'ko'
+                      else f"{hint} (default: {self.aws_profile})")
         questions = [
-            inquirer.Text('profile',
-                          message=f"{hint} (기본값: {self.aws_profile})" if self.language == 'ko'
-                                  else f"{hint} (default: {self.aws_profile})",
-                          default='')
+            inquirer.Text('profile', message=prompt_msg, default='')
         ]
 
         answers = inquirer.prompt(questions)
@@ -204,16 +224,14 @@ class ArchiQCLI:
         raw = answers['profile'].strip()
 
         if not raw:
-            # 그대로 유지
-            pass
+            pass  # 그대로 유지
         elif raw.isdigit():
             idx = int(raw) - 1
             if 0 <= idx < len(profiles):
-                self.aws_profile = profiles[idx]
+                self.aws_profile = profiles[idx]['name']
             else:
                 print(f"  ⚠ 범위를 벗어난 번호입니다. 기존 프로파일({self.aws_profile})을 유지합니다.")
         else:
-            # 이름 직접 입력
             self.aws_profile = raw
 
         self.q_hook.aws_profile = self.aws_profile
