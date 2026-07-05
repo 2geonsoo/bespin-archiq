@@ -45,7 +45,7 @@ class ArchiQCLI:
                 'menu_return': '메뉴로 돌아가려면 Enter를 누르세요...',
                 'error': '오류 발생: {}',
                 'interrupted': '사용자에 의해 중단되었습니다.',
-                'connecting': 'Amazon Q Developer에 연결 중...',
+                'connecting': 'Amazon Kiro CLI에 연결 중...',
                 'processing_question': '질문 처리 중: {}...',
                 'progress': '진행상황: {}줄 ({}자) | 경과시간: {:.1f}초',
                 'completed': '{} 완료! | 총 {}줄 ({}자) | 소요시간: {:.1f}초'
@@ -74,7 +74,7 @@ class ArchiQCLI:
                 'menu_return': 'Press Enter to return to menu...',
                 'error': 'Error occurred: {}',
                 'interrupted': 'Interrupted by user.',
-                'connecting': 'Connecting to Amazon Q Developer...',
+                'connecting': 'Connecting to Amazon Kiro CLI...',
                 'processing_question': 'Processing question: {}...',
                 'progress': 'Progress: {} lines ({} chars) | Elapsed: {:.1f}s',
                 'completed': '{} completed! | Total {} lines ({} chars) | Duration: {:.1f}s'

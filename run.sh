@@ -114,11 +114,11 @@ execute_prompt() {
     local feature_name="$2"
 
     echo -e "${YELLOW}🚀 ${feature_name} 실행 중...${NC}"
-    echo -e "${BLUE}Amazon Q에 프롬프트를 전달합니다.${NC}"
+    echo -e "${BLUE}Amazon Kiro에 프롬프트를 전달합니다.${NC}"
     echo ""
 
-    # Amazon Q CLI에 프롬프트 전달 (AWS_PROFILE 환경변수 적용)
-    echo "$prompt_content" | AWS_PROFILE="$profile" q chat --trust-all-tools
+    # Amazon Kiro CLI에 프롬프트 전달 (AWS_PROFILE 환경변수 적용)
+    echo "$prompt_content" | AWS_PROFILE="$profile" kiro-cli --no-interactive --trust-all-tools
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ ${feature_name} 완료!${NC}"
@@ -239,10 +239,10 @@ main() {
         exit 1
     fi
     
-    # Amazon Q CLI 설치 확인
-    if ! command -v q &> /dev/null; then
-        echo -e "${RED}❌ Amazon Q CLI가 설치되지 않았습니다.${NC}"
-        echo "Amazon Q CLI를 설치해주세요."
+    # Amazon Kiro CLI 설치 확인
+    if ! command -v kiro-cli &> /dev/null; then
+        echo -e "${RED}❌ Amazon Kiro CLI가 설치되지 않았습니다.${NC}"
+        echo "Amazon Kiro CLI를 설치해주세요."
         exit 1
     fi
     

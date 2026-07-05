@@ -82,7 +82,8 @@ class QChatInteractiveSession:
         """Start the interactive qchat session"""
         try:
             self.process = subprocess.Popen(
-                ["qchat", "chat", "--trust-all-tools"],
+                # ["qchat", "chat", "--trust-all-tools"],
+                ["kiro-cli", "chat", "--no-interactive", "--trust-all-tools"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # Merge stderr to stdout
@@ -92,7 +93,7 @@ class QChatInteractiveSession:
                 env=self._build_env()
             )
             self.is_active = True
-            print("[INFO] 🚀 Interactive qchat session started")
+            print("[INFO] 🚀 Interactive kiro-cli session started")
             
             # Start output reader thread
             self.reader_thread = threading.Thread(target=self._read_output, daemon=True)
@@ -103,7 +104,7 @@ class QChatInteractiveSession:
             return True
             
         except Exception as e:
-            print(f"[ERROR] ❌ Failed to start qchat session: {e}")
+            print(f"[ERROR] ❌ Failed to start kiro-cli session: {e}")
             return False
     
     def _read_output(self):
@@ -204,7 +205,7 @@ class QChatInteractiveSession:
                     # Handle thinking messages with spinner
                     if self._is_thinking_message(cleaned_line):
                         if not thinking_active:
-                            self.spinner.start("🤔 Amazon Q is analyzing")
+                            self.spinner.start("🤔 Amazon Kiro is analyzing")
                             thinking_active = True
                         continue
                     else:
@@ -258,7 +259,8 @@ class QChatInteractiveSession:
         
         try:
             # Use file input instead of stdin
-            cmd = ["qchat", "chat", "--trust-all-tools"]
+            # cmd = ["qchat", "chat", "--trust-all-tools"]
+            cmd = ["kiro-cli", "chat", "--no-interactive", "--trust-all-tools"]
             
             with open(temp_file, 'r') as input_file:
                 result = subprocess.run(
@@ -306,7 +308,8 @@ class QChatInteractiveSession:
         
         try:
             # Use echo to pipe the question
-            cmd = f'echo "{question}" | qchat chat --trust-all-tools'
+            # cmd = f'echo "{question}" | qchat chat --trust-all-tools'
+            cmd = f'echo "{question}" | kiro-cli chat --no-interactive --trust-all-tools'
             
             result = subprocess.run(
                 cmd,
@@ -352,7 +355,7 @@ class QChatInteractiveSession:
             raise e
     
     def terminate_session(self):
-        """Terminate the qchat session"""
+        """Terminate the kiro-cli session"""
         print("[INFO] 🛑 Terminating session...")
         
         # Stop spinner first
@@ -375,7 +378,8 @@ class QChatInteractiveSession:
                     self.process.terminate()
                     self.process.wait(timeout=5)
                     
-                print("[INFO] ✅ Interactive qchat session terminated")
+                # print("[INFO] ✅ Interactive qchat session terminated")
+                print("[INFO] ✅ Interactive kiro-cli session terminated")
             except Exception as e:
                 print(f"[WARNING] ⚠️ Error during termination: {e}")
                 try:
@@ -473,7 +477,8 @@ class AmazonQDeveloperHook:
             return {"raw_output": "\n".join(response_lines)}
             
         except Exception as e:
-            raise Exception(f"Amazon Q Developer command failed: {str(e)}")
+            # raise Exception(f"Amazon Q Developer command failed: {str(e)}")
+            raise Exception(f"Amazon Kiro CLI command failed: {str(e)}")
     
     def end_interactive_session_with_tools(self):
         """End the interactive session"""
