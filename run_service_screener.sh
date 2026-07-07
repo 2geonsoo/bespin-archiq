@@ -77,10 +77,10 @@ main() {
         exit 1
     fi
     
-    # Amazon Q CLI 설치 확인
-    if ! command -v q &> /dev/null; then
-        echo -e "${RED}❌ Amazon Q CLI가 설치되지 않았습니다.${NC}"
-        echo "Amazon Q CLI를 설치해주세요."
+    # Amazon Kiro CLI 설치 확인
+    if ! command -v kiro-cli &> /dev/null; then
+        echo -e "${RED}❌ Amazon Kiro CLI가 설치되지 않았습니다.${NC}"
+        echo "Amazon Kiro CLI를 설치해주세요."
         exit 1
     fi
     
@@ -92,8 +92,8 @@ main() {
     local prompt_content
     prompt_content=$(awk -v dir_path="$dir_path" '{gsub(/{DIR_PATH}/, dir_path); print}' "$PROMPT_FILE")
     
-    # Amazon Q CLI에 프롬프트 전달
-    echo "$prompt_content" | q chat --trust-all-tools
+    # Amazon Kiro CLI에 프롬프트 전달
+    echo "$prompt_content" | kiro-cli chat --no-interactive --trust-all-tools
     
     if [ $? -eq 0 ]; then
         echo ""
