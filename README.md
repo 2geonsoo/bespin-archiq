@@ -2,14 +2,10 @@
 
 ArchiQ는 Amazon Q Developer와 통합되어 고객의 현재 AWS 아키텍처를 자동으로 분석하고 개선 방안을 제시하는 도구입니다. 서울 리전 최적화 및 간소화된 사용자 경험을 제공하며, **한국어와 영어를 모두 지원**합니다. AWS 프로파일을 선택하여 멀티 계정 환경에서도 편리하게 사용할 수 있습니다.
 
-ArchiQ is a tool integrated with Amazon Q Developer that automatically analyzes customers' current AWS architecture and provides improvement recommendations. It offers Seoul region optimization and simplified user experience, **supporting both Korean and English languages**. AWS profile selection enables convenient use in multi-account environments.
-
 ## 🌐 언어 지원 / Language Support
 
 - **한국어 (Korean)**: 기본 지원, 한국어 프롬프트 및 UI
-- **English**: Full English support with localized prompts and interface
 - **언어 전환**: 실행 시 언어 선택 가능, 메뉴에서 언어 변경 옵션 제공
-- **Language Switching**: Language selection at startup, language change option in menu
 
 ## 🔑 AWS 프로파일 지원 / AWS Profile Support
 
@@ -17,10 +13,6 @@ ArchiQ is a tool integrated with Amazon Q Developer that automatically analyzes 
 - **시작 시 선택**: 프로그램 실행 시 사용할 AWS 프로파일을 대화형으로 선택
 - **메뉴에서 변경**: 실행 중 언제든지 메뉴에서 프로파일 변경 가능
 - **CLI 옵션**: `run.sh` 실행 시 `-p` 옵션으로 프로파일 직접 지정 가능
-- **Multi-profile**: Auto-detects all profiles in `~/.aws/credentials` and `~/.aws/config`
-- **Startup selection**: Interactively select the AWS profile at startup
-- **In-menu change**: Change profile anytime from the menu during execution
-- **CLI option**: Specify profile directly with `-p` option when running `run.sh`
 
 ## 🚀 주요 기능 / Key Features
 
@@ -52,17 +44,17 @@ ArchiQ is a tool integrated with Amazon Q Developer that automatically analyzes 
 
 ## 🔧 핵심 기술 특징
 
-- **안정적인 프로세스 관리**: Interactive Session 기반 안정적인 qchat 연동
+- **안정적인 프로세스 관리**: Interactive Session 기반 안정적인 `kiro-cli` 연동
 - **간단한 구조**: 복잡한 예외 처리 제거하고 핵심 기능에 집중
-- **AWS 프로파일 전파**: 선택한 프로파일이 모든 AWS CLI 및 q chat 호출에 자동 적용
+- **AWS 프로파일 전파**: 선택한 프로파일이 모든 AWS CLI 및 `kiro-cli` 호출에 자동 적용
 
 ## 📁 프로젝트 구조
 
 ```
-/home/ec2-user/archiQ
+/home/ec2-user/bespin-archiq
 ├── src/
 │   ├── cli.py                    # 🎯 ArchiQ 메인 CLI 인터페이스 (다국어 지원)
-│   ├── middleware/               # Amazon Q Developer 통합 레이어
+│   ├── middleware/               # Amazon Kiro-cli 통합 레이어
 │   │   └── amazon_q_hook.py     # 🔧 간소화된 Interactive Session 핸들러
 │   └── prompt/                   # 🎨 기능별 프롬프트 템플릿
 │       ├── modernization_path.md
@@ -70,25 +62,12 @@ ArchiQ is a tool integrated with Amazon Q Developer that automatically analyzes 
 │       ├── security_check.md
 │       ├── well_architected_review.md
 │       ├── architecture_diagram.md
-│       └── en/                   # 🌐 영어 프롬프트 템플릿
-│           ├── modernization_path.md
-
-│           ├── service_screener_review.md
-│           ├── security_check.md
-│           ├── well_architected_review.md
-│           └── architecture_diagram.md
 ├── output/                       # 📊 생성된 HTML 보고서 저장소
 │   ├── modernization/            # 현대화 경로 분석 결과
 │   ├── service-screener/         # Service Screener 분석 결과
 │   ├── security/                 # 보안 점검 결과
 │   ├── well-architected/         # Well-Architected 리뷰 결과
 │   ├── architecture/             # 아키텍처 다이어그램 결과
-│   └── en/                       # 🌐 영어 보고서 저장소
-│       ├── modernization/
-│       ├── service-screener/
-│       ├── security/
-│       ├── well-architected/
-│       └── architecture/
 ├── requirements.txt              # Python 의존성
 ├── run_archiq.sh                # 🚀 메인 실행 스크립트
 ├── run_modernization_path.sh    # 현대화 경로 분석 실행 스크립트
@@ -104,7 +83,7 @@ ArchiQ is a tool integrated with Amazon Q Developer that automatically analyzes 
 ### 1. 저장소 복제
 ```bash
 git clone <repository-url>
-cd archiQ
+cd bespin-archiQ
 ```
 
 ### 2. 의존성 설치
@@ -154,47 +133,27 @@ chmod +x *.sh
 python src/cli.py
 ```
 
-### 시작 순서 / Startup Sequence
-프로그램 시작 시 아래 순서로 설정합니다:
-1. **언어 선택**: 한국어 / English
-2. **AWS 프로파일 선택**: `~/.aws/credentials`에서 감지된 프로파일 목록 표시
+### CLI 메뉴 옵션 (한국어)
+```
+ArchiQ - AWS 아키텍처 리뷰 도구를 선택하세요:
+  1. Service Screener 결과 기반 Well-Architected Review
+  2. AWS 리소스 기반 보안 점검
+  3. AWS 리소스 기반 Well-Architected 리뷰
+  4. AWS 리소스 기반 아키텍처 다이어그램 생성
+  5. 종료
+```
 
 ### AWS 프로파일 선택 (대화형)
 ```
 사용 가능한 AWS 프로파일:
-  1. default (현재)
-  2. dev
-  3. prod
-  4. staging
+  No.   Profile              Region               Access Key
+  ----  -------------------  -------------------  ----------------
+  1.    
+  2.    
 
-프로파일 번호를 선택하세요 (기본값: default):
-```
-
-### CLI 메뉴 옵션 (한국어)
-```
-Language: 한국어  |  AWS Profile: prod
-  1. 사용중인 AWS 리소스 기반 현대화 경로 분석
-  2. 사용중인 AWS 리소스 기반 보안 점검
-  3. 사용중인 AWS 리소스 기반 Well-Architected 리뷰
-  4. 사용중인 AWS 리소스 기반 아키텍처 다이어그램 생성
-  5. Service Screener 결과 기반 Well-Architected Review
-  6. 종료
-  7. 언어 변경 (Change Language)
-  8. AWS 프로파일 변경
+번호 또는 프로파일 이름을 입력하세요 (기본값: default):       
 ```
 
-### CLI Menu Options (English)
-```
-Language: English  |  AWS Profile: prod
-  1. AWS Resource-based Modernization Path Analysis
-  2. AWS Resource-based Security Assessment
-  3. AWS Resource-based Well-Architected Review
-  4. AWS Resource-based Architecture Diagram Generation
-  5. Service Screener Results-based Well-Architected Review
-  6. Exit
-  7. 언어 변경 (Change Language)
-  8. Change AWS Profile
-```
 
 ## 📊 생성되는 보고서
 

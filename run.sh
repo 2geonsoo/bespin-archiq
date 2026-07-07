@@ -334,6 +334,12 @@ main() {
         read -p "선택하세요 (1-5): " function_num
     fi
 
+    # 종료 먼저 처리
+    if [ "$function_num" = "5" ]; then
+        echo -e "${BLUE}👋 ArchiQ를 종료합니다.${NC}"
+        exit 0
+    fi
+
     # AWS CLI 설치 확인
     if ! command -v aws &> /dev/null; then
         echo -e "${RED}❌ AWS CLI가 설치되지 않았습니다.${NC}"
